@@ -8,7 +8,9 @@ import {
     applyNodeChanges,
     applyEdgeChanges,
     type NodeChange,
-    type EdgeChange
+    type EdgeChange,
+    type OnConnect,
+    addEdge,
 } from '@xyflow/react'
 
 
@@ -18,6 +20,7 @@ interface FlowState {
     edges: Edge[];
     executionState: 'idle' | 'running' | 'paused'; //node状态
     sidebarOpen: boolean; //侧边栏开关
+    selectedNodeId: string | null; //选中的节点ID
 }
 
 //定义节点操作
@@ -31,16 +34,26 @@ interface FlowAction {
     //拖拽逻辑
     onNodesChange: OnNodesChange;
     onEdgesChange: OnEdgesChange;
+    onConnect: OnConnect;
+    setSelectedNodeId: (id: string | null) => void;
 }
 
 //创建Store
 
 export const useFlowStore = create<FlowState & FlowAction>()(
     immer((set) => ({
-        nodes: [],
+        nodes: [
+            {
+                id: '1',
+                type: 'agent',
+                position: { x: 250, y: 250 },
+                data: { label: 'Test Agent 🤖' },
+            }
+        ],
         edges: [],
         executionState: 'idle',
-        sidebarOpen: true,
+        sidebarOpen: false,
+        selectedNodeId: null,
 
         //设置节点
         setNodes: (nodes: Node[]) => set((state) => {
@@ -57,6 +70,10 @@ export const useFlowStore = create<FlowState & FlowAction>()(
         setExecutionState: (status) => set((state) => {
             state.executionState = status;
         }),
+        //设置选中节点
+        setSelectedNodeId: (id: string | null) => set((state) => {
+            state.selectedNodeId = id;
+        }),
 
 
         //拖拽
@@ -65,6 +82,9 @@ export const useFlowStore = create<FlowState & FlowAction>()(
         }),
         onEdgesChange: (changes: EdgeChange[]) => set((state) => {
             state.edges = applyEdgeChanges(changes, state.edges)
+        }),
+        onConnect: (connection) => set((state) => {
+            state.edges = addEdge(connection, state.edges);
         }),
     }))
 )

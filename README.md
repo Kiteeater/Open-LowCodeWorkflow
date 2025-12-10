@@ -16,15 +16,15 @@
 
   - [x] Principles: Understand Zustand `set`/`get`, and why `immer` is needed for nested objects.
   - [x] Implementation: Create `store.ts`. Define `nodes`, `edges` state. Implement `onNodesChange`, `onEdgesChange`, `onConnect` actions.
-  - [ ] _Study: Zustand Best Practices_
+  - [x] _Study: Zustand Best Practices_
 
-- [ ] **1.3 Custom Node UI (3h)**
-  - [ ] Principles: React Flow Custom Node (`nodeTypes`) mechanics.
-  - [ ] Implementation:
-    - [ ] Create `AgentNode.tsx`.
-    - [ ] Style: Left Icon, Center Title, Right Status Dot (n8n style).
-    - [ ] Key: Use `<Handle />` component. Implement "Left-In, Right-Out" layout.
-  - [ ] _Reference: React Flow Custom Node Example_
+- [x] **1.3 Custom Node UI (3h)**
+  - [x] Principles: React Flow Custom Node (`nodeTypes`) mechanics.
+  - [x] Implementation:
+    - [x] Create `AgentNode.tsx`.
+    - [x] Style: Left Icon, Center Title, Right Status Dot (n8n style).
+    - [x] Key: Use `<Handle />` component. Implement "Left-In, Right-Out" layout.
+  - [x] _Reference: React Flow Custom Node Example_
 
 ---
 
@@ -32,10 +32,10 @@
 
 **Goal:** "Configuration is UI". Click node -> Open Drawer -> Generate Form based on config.
 
-- [ ] **2.1 Sidebar Drawer & Selection Logic (2h)**
+- [x] **2.1 Sidebar Drawer & Selection Logic (2h)**
 
-  - [ ] Implementation: Import `shadcn/ui` Sheet component.
-  - [ ] Logic: Click node -> Store records `selectedNodeId` -> Trigger Sidebar open.
+  - [x] Implementation: Import `shadcn/ui` Sheet component.
+  - [x] Logic: Click node -> Store records `selectedNodeId` -> Trigger Sidebar open.
 
 - [ ] **2.2 JSON Schema Design (2h)**
 

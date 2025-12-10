@@ -1,4 +1,9 @@
+@config "../tailwind.config.cjs";
+
 @tailwind base;
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
 @tailwind components;
 @tailwind utilities;
 
@@ -51,7 +56,8 @@
 
 @layer base {
   * {
-    @apply border-border;
+    border-color: hsl(var(--border));
+    outline-color: hsl(var(--ring) / 0.5);
   }
   body {
     @apply bg-background text-foreground;
