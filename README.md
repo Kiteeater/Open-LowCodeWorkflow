@@ -50,6 +50,7 @@
   - [ ] Create `nodeRegistry.ts`.
   - [ ] Define "HTTP Request" Node (inputs: URL, Method, Body, **UseProxy**).
   - [ ] Define "Code" Node (inputs: Javascript Code).
+  - [ ] **[NEW]** Define "AI Agent" Node (inputs: Model, Prompt, API Key).
 
 - [ ] **2.3 Dynamic Form Rendering (4h)**
   - [ ] Use `react-hook-form`.
