@@ -1,200 +1,189 @@
-# n8n-lite: High-Performance Workflow Engine
+# EdgeFlow: High-Performance Browser-Based Workflow Engine
 
 ## 📅 Project Plan Checklist
 
-### Day 1: Canvas Core —— React Flow & Zustand Integration
+### 💡 Key Optimizations (Refactored)
 
-**Goal:** Build project skeleton, implement canvas drag & drop, connections, and state storage.
+1.  **Persistence**: Added `zustand/persist` to save work across reloads.
+2.  **Network**: Added "Proxy Mode" to bypass CORS restrictions during demos.
+3.  **Sandbox**: Replaced `with` syntax with `new Function(...args)` to support React Strict Mode.
+
+---
+
+### Day 1: Canvas Core —— React Flow & State Persistence
+
+**Goal:** Build project skeleton, implement canvas drag & drop, and ensure data survives page reloads.
 
 - [x] **1.1 Environment Setup (1h)**
 
   - [x] Initialize Vite + React + TypeScript.
-  - [x] Install dependencies: @xyflow/react, zustand, immer, lucide-react.
+  - [x] Install dependencies: `@xyflow/react`, `zustand`, `immer`, `lucide-react`.
   - [x] Configure Tailwind CSS.
 
-- [x] **1.2 State Management Design (2h)**
+- [x] **1.2 State Management & Persistence (2h)**
 
-  - [x] Principles: Understand Zustand `set`/`get`, and why `immer` is needed for nested objects.
-  - [x] Implementation: Create `store.ts`. Define `nodes`, `edges` state. Implement `onNodesChange`, `onEdgesChange`, `onConnect` actions.
-  - [x] _Study: Zustand Best Practices_
+  - [x] Principles: Understand Zustand `set`/`get`.
+  - [x] Implementation: Create `store.ts`. Define `nodes`, `edges`, `onNodesChange`, `onConnect`.
+  - [x] **⚠️ [NEW] Persistence Integration**:
+    - [x] Import `persist` from `zustand/middleware`.
+    - [x] Wrap store config to save to LocalStorage (key: `edgeflow-storage`).
+    - [x] _Test: Refresh page -> Canvas state should remain._
 
 - [x] **1.3 Custom Node UI (3h)**
-  - [x] Principles: React Flow Custom Node (`nodeTypes`) mechanics.
-  - [x] Implementation:
-    - [x] Create `AgentNode.tsx`.
-    - [x] Style: Left Icon, Center Title, Right Status Dot (n8n style).
-    - [x] Key: Use `<Handle />` component. Implement "Left-In, Right-Out" layout.
-  - [x] _Reference: React Flow Custom Node Example_
+  - [x] Create `AgentNode.tsx` with "Left-In, Right-Out" Handle layout.
+  - [x] Style: Icon, Title, Status Indicator (Loading/Success/Error).
+  - [x] Register in `nodeTypes`.
 
 ---
 
 ### Day 2: Metadata Driven —— Dynamic Form System
 
-**Goal:** "Configuration is UI". Click node -> Open Drawer -> Generate Form based on config.
+**Goal:** "Configuration is UI". Click node -> Open Drawer -> Generate Form based on JSON Schema.
 
-- [x] **2.1 Sidebar Drawer & Selection Logic (2h)**
+- [x] **2.1 Sidebar Drawer Logic (2h)**
 
-  - [x] Implementation: Import `shadcn/ui` Sheet component.
-  - [x] Logic: Click node -> Store records `selectedNodeId` -> Trigger Sidebar open.
+  - [x] Import `shadcn/ui` Sheet component.
+  - [x] Logic: Click node -> Set `selectedNodeId` -> Open Sheet.
 
-- [ ] **2.2 JSON Schema Design (2h)**
+- [ ] **2.2 JSON Schema Registry (2h)**
 
-  - [ ] Principles: Understand n8n `INodeType` interface design.
-  - [ ] Implementation: Create `nodeRegistry.ts`. Define config for Webhook and LLM Chain (properties: label, inputs, parameters).
-  - [ ] _Reference: n8n Node Definition Source (properties only)_
+  - [ ] Create `nodeRegistry.ts`.
+  - [ ] Define "HTTP Request" Node (inputs: URL, Method, Body, **UseProxy**).
+  - [ ] Define "Code" Node (inputs: Javascript Code).
 
 - [ ] **2.3 Dynamic Form Rendering (4h)**
-  - [ ] Principles: React Hook Form `useForm` and `Controller`.
-  - [ ] Implementation:
-    - [ ] Create `ParameterRender` component.
-    - [ ] Iterate node configuration `parameters`.
-    - [ ] If `type: 'string'` -> Render Input.
-    - [ ] If `type: 'select'` -> Render Select.
-  - [ ] Challenge: Sync updates to Store's Node `data` field when form changes.
+  - [ ] Use `react-hook-form`.
+  - [ ] Create `ParameterRender` component.
+  - [ ] Sync form changes back to Store Node Data (`updateNodeData`).
 
 ---
 
-### Day 3: Initial Run —— Main Thread Executor
+### Day 3: Initial Run —— Logic & Network Layer
 
-**Goal:** Run logic without Workers first.
+**Goal:** Execute logic in Main Thread first, handling real network requests.
 
-- [ ] **3.1 Simple Topological Sort (3h)**
+- [ ] **3.1 Topological Sort (3h)**
 
-  - [ ] Principles: DAG (Directed Acyclic Graph) & BFS (Breadth-First Search).
-  - [ ] Implementation: Write helper function `getExecutionSequence(nodes, edges)`.
-  - [ ] _Study: Graph Traversal Algorithms_
+  - [ ] Implement `getExecutionSequence(nodes, edges)` using BFS/Kahn's Algorithm.
 
-- [ ] **3.2 Mock Execution Logic (3h)**
+- [ ] **3.2 Execution Engine with Proxy Strategy (3h)**
 
-  - [ ] Implementation: Implement `runWorkflow` function.
-  - [ ] Traverse nodes in sequence.
-  - [ ] If LLM Node: `await new Promise(...)` to simulate request.
-  - [ ] Write results to Store's `executionResults`.
+  - [ ] Implement `runWorkflow` function.
+  - [ ] **⚠️ [NEW] HTTP Node Implementation**:
+    - [ ] Add logic: Check `node.data.useProxy`.
+    - [ ] If true: Prepend `https://cors-anywhere.herokuapp.com/` to target URL.
+    - [ ] If false: Fetch directly (Direct Mode).
+  - [ ] Store results in `executionResults`.
 
 - [ ] **3.3 Visual Feedback (2h)**
-  - [ ] Implementation: Change node border color based on `executionResults` status (Loading Yellow -> Success Green).
+  - [ ] Update Node UI based on status (Yellow -> Green/Red).
 
 ---
 
-### Phase 2: Architecture Refactoring & Deep Tech (Day 4 - Day 7)
+### Phase 2: Architecture Refactoring (Day 4 - Day 7)
 
-**Goal:** Transform simple React App into a high-performance, Worker & AST based professional engine.
+**Goal:** Transform into a professional, non-blocking engine.
 
-### Day 4: Layered Architecture —— Web Worker Multithreading
+### Day 4: Layered Architecture —— Web Worker & Comlink
 
-**Goal:** Move execution logic out of main thread. UI is UI, Calculation is Calculation.
+**Goal:** Offload execution to Worker to keep UI at 60FPS.
 
-- [ ] **4.1 Web Worker Basics (2h)**
+- [ ] **4.1 Web Worker Setup (2h)**
 
-  - [ ] Principles: Event Loop, Worker communication.
-  - [ ] Implementation: Create simple `test.worker.ts`, Main sends "ping", Worker replies "pong".
-  - [ ] _Study: MDN Web Workers API_
+  - [ ] Create `workflow.worker.ts`.
+  - [ ] Test basic Ping/Pong message.
 
-- [ ] **4.2 Introduce Comlink (2h)**
+- [ ] **4.2 Comlink Integration (2h)**
 
-  - [ ] Principles: RPC (Remote Procedure Call) concept.
-  - [ ] Implementation: Wrap Worker with `comlink`. Expose Worker functions as Promise objects.
+  - [ ] Install `comlink`.
+  - [ ] Expose Worker functions as RPC Promise objects.
 
-- [ ] **4.3 Migrate Execution Engine (4h)**
-  - [ ] Implementation:
-    - [ ] Move `runWorkflow` logic from Day 3 to Worker.
-    - [ ] Main Thread responsibility: 1. Send full Graph JSON to Worker. 2. Listen for progress events from Worker.
+- [ ] **4.3 Engine Migration (4h)**
+  - [ ] Move `runWorkflow` and Topo Sort logic into Worker.
+  - [ ] Main Thread: Send Graph JSON -> Await Result.
 
 ---
 
-### Day 5: Intelligent Core —— AST Syntax Analysis
+### Day 5: Intelligent Core —— AST Dependency Analysis
 
-**Goal:** Implement real variable reference `{{ $node["A"].data }}` instead of regex replacement.
+**Goal:** Support `{{ $node["A"].data }}` via static analysis.
 
-- [ ] **5.1 Abstract Syntax Tree (AST) Cognition (2h)**
+- [ ] **5.1 AST Setup (2h)**
 
-  - [ ] Principles: Lexer -> Parser.
-  - [ ] Tool: Play with AST Explorer (Input `$node.MyNode.data` -> Observe Tree).
+  - [ ] Install `acorn`.
+  - [ ] Test parsing simple JS expressions in console.
 
-- [ ] **5.2 Introduce Acorn Parser (3h)**
+- [ ] **5.2 Dependency Extraction (3h)**
 
-  - [ ] Implementation: Install `acorn`.
-  - [ ] Write `parseExpression(code)`.
-  - [ ] Identify `MemberExpression`, extract all referenced node names.
+  - [ ] Implement `extractDependencies(code)` using Acorn.
+  - [ ] Walk the AST tree to find `MemberExpression` (e.g., `$node.Http`).
 
-- [ ] **5.3 Dependency Injection (3h)**
-  - [ ] Logic: Before executing node code in Worker, analyze AST, look up upstream node data in `executionResults`, and inject into execution context.
+- [ ] **5.3 Data Injection Logic (3h)**
+  - [ ] In Worker: Before running a node, parse its code.
+  - [ ] Find dependencies -> Fetch data from `executionResults` -> Inject into context.
 
 ---
 
-### Day 6: Security Sandbox —— Proxy & Execution Environment
+### Day 6: Secure Runtime —— Strict Mode Compatible Sandbox
 
-**Goal:** Execute user code safely in Worker.
+**Goal:** Execute user code safely without using `with` (to support React Strict Mode).
 
-- [ ] **6.1 Proxy Object (3h)**
+- [ ] **6.1 Scope Preparation (2h)**
 
-  - [ ] Principles: ES6 Proxy `get` trap.
-  - [ ] Implementation: Create `sandboxProxy`. Intercept access to `window`, `document`, `fetch` (return undefined or throw error).
-  - [ ] _Study: MDN Proxy_
+  - [ ] Define the context object: `const context = { $node: ..., utils: ..., console: ... }`.
+  - [ ] Extract keys and values: `Object.keys(context)`, `Object.values(context)`.
 
-- [ ] **6.2 Function Constructor Execution (3h)**
-  - [ ] Implementation:
+- [ ] **6.2 Safe Execution Implementation (4h)**
+
+  - [ ] **⚠️ [NEW] Replace `with` logic**:
+
     ```javascript
-    const safeRun = new Function(
-      "sandbox",
-      "with(sandbox) { return " + userCode + " }"
-    );
-    safeRun(sandboxProxy);
+    // Create function with explicit arguments
+    const safeFn = new Function(...scopeKeys, `return ${userCode}`);
+
+    // Execute with actual values
+    try {
+      const result = safeFn(...scopeValues);
+    } catch (e) {
+      throw new Error(`Execution failed: ${e.message}`);
+    }
     ```
-  - [ ] Test: Try `window.location.href = ...` in input, ensure intercepted.
+
+  - [ ] Verify: Ensure variables defined in `context` are accessible in user code.
+
+- [ ] **6.3 Security Hardening (Optional)**
+  - [ ] Shadow dangerous globals in the Worker scope (e.g., `self.fetch = null` if needed).
 
 ---
 
-### Day 7: Final Polish & Resume Output
+### Day 7: Final Polish & Portfolio Ready
 
-**Goal:** Optimize experience, fix bugs, clean code, prepare interview materials.
+**Goal:** High-end UX and Interview Prep.
 
 - [ ] **7.1 Monaco Editor Integration (3h)**
 
-  - [ ] Implementation: Replace Day 2 Input with Monaco Editor.
-  - [ ] Show-off: Use Day 5 AST analysis results to implement simple code autocomplete.
+  - [ ] Replace standard Textarea with Monaco Editor for Code Nodes.
+  - [ ] (Bonus) Add syntax highlighting.
 
-- [ ] **7.2 Data Perspective Overlay (2h)**
+- [ ] **7.2 Data Inspector (2h)**
 
-  - [ ] Implementation: Hover node to show final JSON data generated in Worker.
+  - [ ] Hover/Click a node after run to see Input/Output JSON in a nice viewer.
 
-- [ ] **7.3 Resume & Demo Preparation (3h)**
-  - [ ] Task: Record GIF (Drag -> Connect -> Code Ref -> Run -> Animation -> Result).
-  - [ ] Update README with tech keywords used in these 7 days.
+- [ ] **7.3 Resume & Demo Assets (3h)**
+  - [ ] Record GIF: Drag Node -> Config (Proxy On) -> Connect -> Run -> Result.
+  - [ ] Update README with "Off-Main-Thread", "AST", "Strict Mode Sandbox".
 
 ---
 
-## 🚀 How to Sync to GitHub
+## 🚀 Git Workflow
 
-1.  **Initialize Git** (if not already done):
+```bash
+# Initialize
+git init
+git add .
+git commit -m "Initial: Project scaffold with detailed plan"
 
-    ```bash
-    git init
-    ```
-
-2.  **Add Files**:
-
-    ```bash
-    git add .
-    ```
-
-3.  **Commit**:
-
-    ```bash
-    git commit -m "Initial commit: Project scaffold and plan"
-    ```
-
-4.  **Create a Repository on GitHub**:
-
-    - Go to [GitHub.com/new](https://github.new)
-    - Name it `n8n-lite-graph` (or similar).
-    - Do **not** check "Initialize with README".
-
-5.  **Link Remote & Push**:
-    - Copy the URL provided by GitHub.
-    - Run:
-    ```bash
-    git remote add origin https://github.com/your-username/n8n-lite.git
-    git branch -M main
-    git push -u origin main
-    ```
+# Create Repo on GitHub called 'edgeflow'
+git remote add origin https://github.com/YOUR_USER/edgeflow.git
+git push -u origin main
+```

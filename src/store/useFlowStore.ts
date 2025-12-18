@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
+import { persist } from 'zustand/middleware';
 import {
     type Node,
     type Edge,
@@ -41,50 +42,55 @@ interface FlowAction {
 //创建Store
 
 export const useFlowStore = create<FlowState & FlowAction>()(
-    immer((set) => ({
-        nodes: [
-            {
-                id: '1',
-                type: 'agent',
-                position: { x: 250, y: 250 },
-                data: { label: 'Test Agent 🤖' },
-            }
-        ],
-        edges: [],
-        executionState: 'idle',
-        sidebarOpen: false,
-        selectedNodeId: null,
+    persist(
+        immer((set) => ({
+            nodes: [
+                {
+                    id: '1',
+                    type: 'agent',
+                    position: { x: 250, y: 250 },
+                    data: { label: 'Test Agent 🤖' },
+                }
+            ],
+            edges: [],
+            executionState: 'idle',
+            sidebarOpen: false,
+            selectedNodeId: null,
 
-        //设置节点
-        setNodes: (nodes: Node[]) => set((state) => {
-            state.nodes = nodes;
-        }),
-        //设置边界
-        setEdges: (edges: Edge[]) => set((state) => {
-            state.edges = edges;
-        }),
-        // 切换侧边栏：取反
-        toggleSidebar: () => set((state) => {
-            state.sidebarOpen = !state.sidebarOpen;
-        }),
-        setExecutionState: (status) => set((state) => {
-            state.executionState = status;
-        }),
-        //设置选中节点
-        setSelectedNodeId: (id: string | null) => set((state) => {
-            state.selectedNodeId = id;
-        }),
+            //设置节点
+            setNodes: (nodes: Node[]) => set((state) => {
+                state.nodes = nodes;
+            }),
+            //设置边界
+            setEdges: (edges: Edge[]) => set((state) => {
+                state.edges = edges;
+            }),
+            // 切换侧边栏：取反
+            toggleSidebar: () => set((state) => {
+                state.sidebarOpen = !state.sidebarOpen;
+            }),
+            setExecutionState: (status) => set((state) => {
+                state.executionState = status;
+            }),
+            //设置选中节点
+            setSelectedNodeId: (id: string | null) => set((state) => {
+                state.selectedNodeId = id;
+            }),
 
 
-        //拖拽
-        onNodesChange: (changes: NodeChange[]) => set((state) => {
-            state.nodes = applyNodeChanges(changes, state.nodes);  //React Flow提供的函数
-        }),
-        onEdgesChange: (changes: EdgeChange[]) => set((state) => {
-            state.edges = applyEdgeChanges(changes, state.edges)
-        }),
-        onConnect: (connection) => set((state) => {
-            state.edges = addEdge(connection, state.edges);
-        }),
-    }))
+            //拖拽
+            onNodesChange: (changes: NodeChange[]) => set((state) => {
+                state.nodes = applyNodeChanges(changes, state.nodes);  //React Flow提供的函数
+            }),
+            onEdgesChange: (changes: EdgeChange[]) => set((state) => {
+                state.edges = applyEdgeChanges(changes, state.edges)
+            }),
+            onConnect: (connection) => set((state) => {
+                state.edges = addEdge(connection, state.edges);
+            }),
+        })),
+        {
+            name: 'edgeflow-storage', // 存储在 LocalStorage 中的 key
+        }
+    )
 )
