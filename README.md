@@ -45,17 +45,17 @@
   - [x] Import `shadcn/ui` Sheet component.
   - [x] Logic: Click node -> Set `selectedNodeId` -> Open Sheet.
 
-- [ ] **2.2 JSON Schema Registry (2h)**
+- [x] **2.2 JSON Schema Registry (2h)**
 
-  - [ ] Create `nodeRegistry.ts`.
-  - [ ] Define "HTTP Request" Node (inputs: URL, Method, Body, **UseProxy**).
-  - [ ] Define "Code" Node (inputs: Javascript Code).
-  - [ ] **[NEW]** Define "AI Agent" Node (inputs: Model, Prompt, API Key).
+  - [x] Create `nodeRegistry.ts`.
+  - [x] Define "HTTP Request" Node (inputs: URL, Method, Body, **UseProxy**).
+  - [x] Define "Code" Node (inputs: Javascript Code).
+  - [x] **[NEW]** Define "AI Agent" Node (inputs: Model, Prompt, API Key).
 
-- [ ] **2.3 Dynamic Form Rendering (4h)**
-  - [ ] Use `react-hook-form`.
-  - [ ] Create `ParameterRender` component.
-  - [ ] Sync form changes back to Store Node Data (`updateNodeData`).
+- [x] **2.3 Dynamic Form Rendering (4h)**
+  - [x] Use `react-hook-form`.
+  - [x] Create `ParameterRender` component.
+  - [x] Sync form changes back to Store Node Data (`updateNodeData`).
 
 ---
 

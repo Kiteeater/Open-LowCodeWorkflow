@@ -37,6 +37,7 @@ interface FlowAction {
     onEdgesChange: OnEdgesChange;
     onConnect: OnConnect;
     setSelectedNodeId: (id: string | null) => void;
+    updateNodeData: (nodeId: string, newData: any) => void;
 }
 
 //创建Store
@@ -44,14 +45,7 @@ interface FlowAction {
 export const useFlowStore = create<FlowState & FlowAction>()(
     persist(
         immer((set) => ({
-            nodes: [
-                {
-                    id: '1',
-                    type: 'agent',
-                    position: { x: 250, y: 250 },
-                    data: { label: 'Test Agent 🤖' },
-                }
-            ],
+            nodes: [],
             edges: [],
             executionState: 'idle',
             sidebarOpen: false,
@@ -87,6 +81,16 @@ export const useFlowStore = create<FlowState & FlowAction>()(
             }),
             onConnect: (connection) => set((state) => {
                 state.edges = addEdge(connection, state.edges);
+            }),
+
+            //精确更新节点数据
+            updateNodeData: (nodeId, newData) => set((state) => {
+                const node = state.nodes.find((n) => n.id === nodeId);
+                if (node) {
+                    // Immer 允许直接修改，它会处理好不可变性
+                    // 这里做浅合并：保留原有的 data，只覆盖新传入的字段
+                    node.data = { ...node.data, ...newData };
+                }
             }),
         })),
         {

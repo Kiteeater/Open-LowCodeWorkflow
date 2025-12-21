@@ -1,6 +1,7 @@
 //想要新节点就在这里加
 import { Globe, Code, Sparkles } from 'lucide-react';
 import React from 'react';
+import { Position } from '@xyflow/react';
 /**
  * 💡 什么是 ParameterType？
  * 它是表单项的“基因”。后续渲染器会根据这个类型决定：
@@ -10,6 +11,14 @@ import React from 'react';
  * 'code' -> 代码编辑器
  */
 export type ParameterType = 'string' | 'boolean' | 'select' | 'code';
+
+// 定义句柄的标准格式
+export interface NodeHandle {
+  id: string;
+  type: 'source' | 'target';
+  position: Position;
+  label?: string; // 可选，用于显示提示
+}
 
 // 定义每一个参数（零件）的标准格式
 export interface NodeParameter {
@@ -28,6 +37,7 @@ export interface NodeDefinition {
   icon: React.ElementType; // 节点图标组件
   description: string;  // 节点描述
   parameters: NodeParameter[]; // 节点包含的所有参数
+  handles?: NodeHandle[]; // 节点包含的所有句柄
 }
 
 /**
@@ -42,6 +52,12 @@ export const nodeRegistry: Record<string, NodeDefinition> = {
     icon: Globe,
     description: '发送 API 请求到指定服务器',
     parameters: [
+      {
+        name: 'label',
+        label: 'Node Name',
+        type: 'string',
+        default: 'HTTP Request',
+      },
       {
         name: 'url',
         label: 'URL',
@@ -84,6 +100,12 @@ export const nodeRegistry: Record<string, NodeDefinition> = {
     description: '通过 JavaScript 处理数据',
     parameters: [
       {
+        name: 'label',
+        label: 'Node Name',
+        type: 'string',
+        default: 'Code Node',
+      },
+      {
         name: 'code',
         label: 'Javascript Code',
         type: 'code',
@@ -99,6 +121,12 @@ export const nodeRegistry: Record<string, NodeDefinition> = {
     icon: Sparkles,
     description: '使用大语言模型 (LLM) 处理任务或生成内容',
     parameters: [
+      {
+        name: 'label',
+        label: 'Node Name',
+        type: 'string',
+        default: 'AI Agent',
+      },
       {
         name: 'model',
         label: 'Model',
@@ -129,6 +157,12 @@ export const nodeRegistry: Record<string, NodeDefinition> = {
         type: 'string',
         placeholder: 'sk-...',
       },
+    ],
+    handles: [
+      { id: 'main-input', type: 'target', position: Position.Left },
+      { id: 'main-output', type: 'source', position: Position.Right },
+      { id: 'model-input', type: 'target', position: Position.Top },
+      { id: 'tools-input', type: 'target', position: Position.Bottom },
     ],
   },
 };

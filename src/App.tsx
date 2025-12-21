@@ -1,44 +1,99 @@
 import './App.css'
+import React, { useCallback, useRef } from 'react';
 import FlowSidebar from './components/FlowSidebar';
-import {useFlowStore} from './store/useFlowStore'
-import { ReactFlow, Background, Controls, MiniMap } from '@xyflow/react'
+import NodePalette from './components/NodePalette';
+import { useFlowStore } from './store/useFlowStore'
+import { ReactFlow, Background, Controls, MiniMap, type ReactFlowInstance, BackgroundVariant } from '@xyflow/react'
 import '@xyflow/react/dist/style.css';
-import { AgentNode } from './components/AgentNode';
+import { BasicNode } from './components/NodeType';
 
+// ⚡️ 映射所有注册的节点类型到我们的 AgentNode 组件
 const nodeTypes = {
-  agent: AgentNode,
+  'agent': BasicNode,         // 兼容旧节点
+  'ai-agent': BasicNode,      // 匹配 registry
+  'http-request': BasicNode,
+  'code': BasicNode,
 };
 
 function App() {
-  // 获取设置选中节点的方法
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setSelectedNodeId } = useFlowStore();
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
+
+  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setSelectedNodeId, setNodes } = useFlowStore();
+
+  // ⚡️ 处理拖拽逻辑
+  const onDragOver = useCallback((event: React.DragEvent) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const type = event.dataTransfer.getData('application/reactflow');
+
+      // 验证是否存在该类型
+      if (typeof type === 'undefined' || !type) return;
+
+      // 获取鼠标在画布上的位置
+      const position = reactFlowInstance?.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+
+      if (position) {
+          const newNode = {
+            id: `${type}-${Date.now()}`, // 唯一 ID
+            type,
+            position,
+            data: { label: `New ${type}` }, // 初始数据
+          };
+          
+          setNodes([...nodes, newNode]);
+      }
+    },
+    [reactFlowInstance, nodes, setNodes]
+  );
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={onConnect}
-        nodeTypes={nodeTypes}
-        
-        // <--- 关键：点击节点时，更新 Store
-        onNodeClick={(_, node) => {
-            console.log('Clicked node:', node.id);
-            setSelectedNodeId(node.id);
-        }}
-        // 点击画布空白处时，取消选中 (可选，体验更好)
-        onPaneClick={() => setSelectedNodeId(null)} 
-      >
-        <Background color="#94a3b8" gap={20} size={1} />
-        <Controls showInteractive={false} />
-        <MiniMap nodeColor="#94a3b8" />
-      </ReactFlow>
-      {/* <--- 关键：放入侧边栏组件 */}
+    <div className="flex h-screen w-screen bg-slate-50 overflow-hidden font-sans">
+      {/* 🚀 左侧：节点库 */}
+      <NodePalette />
+
+      {/* 🎨 中间：主画布 */}
+      <div className="flex-1 relative" ref={reactFlowWrapper}>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          nodeTypes={nodeTypes}
+          onInit={setReactFlowInstance}
+          onDrop={onDrop}
+          onDragOver={onDragOver}
+          
+          onNodeClick={(_, node) => setSelectedNodeId(node.id)}
+          onPaneClick={() => setSelectedNodeId(null)} 
+          fitView
+        >
+          {/* 使用 CSS 变量或更淡的 Slate 色 */}
+          <Background color="#94a3b8" gap={20} size={1} variant={BackgroundVariant.Dots} className="opacity-20" />
+          <Controls showInteractive={false} className="bg-white border-none shadow-lg rounded-lg text-slate-600" />
+          <MiniMap 
+            nodeColor="#64748b" 
+            style={{ borderRadius: '12px', border: '1px solid #e2e8f0' }} 
+            maskColor="rgba(248, 250, 252, 0.8)" 
+            className="bg-white shadow-sm"
+          />
+        </ReactFlow>
+      </div>
+
+      {/* 🛠️ 右侧：配置详情 (由 selectedNodeId 驱动) */}
       <FlowSidebar />
     </div>
-  )
+  );
 }
 
-export default App
+export default App;
