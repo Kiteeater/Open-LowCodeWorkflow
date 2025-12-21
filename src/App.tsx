@@ -7,6 +7,7 @@ import { ReactFlow, Background, Controls, MiniMap, type ReactFlowInstance, Backg
 import '@xyflow/react/dist/style.css';
 import { BasicNode } from './components/NodeType';
 import { runWorkflow } from './utils/flowEngine';
+import { workerClient } from './utils/worker-client';
 import { Play, Loader2 } from 'lucide-react';
 
 // ⚡️ 映射所有注册的节点类型到我们的 AgentNode 组件
@@ -28,6 +29,11 @@ function App() {
 
   // ⚡️ 执行工作流
   const handleRun = async () => {
+    // 引入 Comlink 测试调用
+    console.log('--- Comlink RPC Test Start ---');
+    await workerClient.testConnection('Antigravity');
+    console.log('--- Comlink RPC Test End ---');
+
     resetExecution();
     await runWorkflow(nodes, edges, {
       setNodeStatus,
