@@ -63,21 +63,21 @@
 
 **Goal:** Execute logic in Main Thread first, handling real network requests.
 
-- [ ] **3.1 Topological Sort (3h)**
+- [x] **3.1 Topological Sort (3h)**
 
-  - [ ] Implement `getExecutionSequence(nodes, edges)` using BFS/Kahn's Algorithm.
+  - [x] Implement `getExecutionSequence(nodes, edges)` using BFS/Kahn's Algorithm.
 
-- [ ] **3.2 Execution Engine with Proxy Strategy (3h)**
+- [x] **3.2 Execution Engine with Proxy Strategy (3h)**
 
-  - [ ] Implement `runWorkflow` function.
-  - [ ] **⚠️ [NEW] HTTP Node Implementation**:
-    - [ ] Add logic: Check `node.data.useProxy`.
-    - [ ] If true: Prepend `https://cors-anywhere.herokuapp.com/` to target URL.
-    - [ ] If false: Fetch directly (Direct Mode).
-  - [ ] Store results in `executionResults`.
+  - [x] Implement `runWorkflow` function.
+  - [x] **⚠️ [NEW] HTTP Node Implementation**:
+    - [x] Add logic: Check `node.data.useProxy`.
+    - [x] If true: Prepend `https://cors-anywhere.herokuapp.com/` to target URL.
+    - [x] If false: Fetch directly (Direct Mode).
+  - [x] Store results in `executionResults`.
 
-- [ ] **3.3 Visual Feedback (2h)**
-  - [ ] Update Node UI based on status (Yellow -> Green/Red).
+- [x] **3.3 Visual Feedback (2h)**
+  - [x] Update Node UI based on status (Yellow -> Green/Red).
 
 ---
 

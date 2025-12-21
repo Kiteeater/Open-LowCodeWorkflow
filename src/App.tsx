@@ -6,6 +6,8 @@ import { useFlowStore } from './store/useFlowStore'
 import { ReactFlow, Background, Controls, MiniMap, type ReactFlowInstance, BackgroundVariant } from '@xyflow/react'
 import '@xyflow/react/dist/style.css';
 import { BasicNode } from './components/NodeType';
+import { runWorkflow } from './utils/flowEngine';
+import { Play, Loader2 } from 'lucide-react';
 
 // ⚡️ 映射所有注册的节点类型到我们的 AgentNode 组件
 const nodeTypes = {
@@ -19,7 +21,20 @@ function App() {
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const [reactFlowInstance, setReactFlowInstance] = React.useState<ReactFlowInstance | null>(null);
 
-  const { nodes, edges, onNodesChange, onEdgesChange, onConnect, setSelectedNodeId, setNodes } = useFlowStore();
+  const { 
+    nodes, edges, onNodesChange, onEdgesChange, onConnect, setSelectedNodeId, setNodes,
+    executionState, setNodeStatus, setNodeResult, setExecutionState, resetExecution
+  } = useFlowStore();
+
+  // ⚡️ 执行工作流
+  const handleRun = async () => {
+    resetExecution();
+    await runWorkflow(nodes, edges, {
+      setNodeStatus,
+      setNodeResult,
+      setExecutionState
+    });
+  };
 
   // ⚡️ 处理拖拽逻辑
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -63,6 +78,27 @@ function App() {
 
       {/* 🎨 中间：主画布 */}
       <div className="flex-1 relative" ref={reactFlowWrapper}>
+        {/* ⚡️ 控制栏：运行按钮 */}
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 flex gap-2">
+          <button
+            onClick={handleRun}
+            disabled={executionState === 'running'}
+            className={`
+              flex items-center gap-2 px-6 py-2.5 rounded-full font-semibold shadow-lg transition-all
+              ${executionState === 'running' 
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                : 'bg-indigo-600 text-white hover:bg-indigo-700 active:scale-95'}
+            `}
+          >
+            {executionState === 'running' ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Play className="w-4 h-4 fill-current" />
+            )}
+            {executionState === 'running' ? 'Running...' : 'Run Workflow'}
+          </button>
+        </div>
+
         <ReactFlow
           nodes={nodes}
           edges={edges}

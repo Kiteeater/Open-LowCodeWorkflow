@@ -13,22 +13,25 @@ import {
     type OnConnect,
     addEdge,
 } from '@xyflow/react'
+import { type WorkflowNodeData } from '@/types/workflow';
 
 
 //定义节点类型
 interface FlowState {
-    nodes: Node[];
+    nodes: Node<WorkflowNodeData>[];
     edges: Edge[];
-    executionState: 'idle' | 'running' | 'paused'; //node状态
+    executionState: 'idle' | 'running' | 'paused'; //整体执行状态
     sidebarOpen: boolean; //侧边栏开关
     selectedNodeId: string | null; //选中的节点ID
+    executionStatus: Record<string, 'idle' | 'running' | 'success' | 'error'>;
+    executionResults: Record<string, unknown>;
 }
 
 //定义节点操作
 
 interface FlowAction {
     //设置节点，边界，侧边栏和执行状态
-    setNodes: (nodes: Node[]) => void;
+    setNodes: (nodes: Node<WorkflowNodeData>[]) => void;
     setEdges: (edges: Edge[]) => void;
     toggleSidebar: () => void;
     setExecutionState: (state: 'idle' | 'running' | 'paused') => void;
@@ -37,7 +40,12 @@ interface FlowAction {
     onEdgesChange: OnEdgesChange;
     onConnect: OnConnect;
     setSelectedNodeId: (id: string | null) => void;
-    updateNodeData: (nodeId: string, newData: any) => void;
+    updateNodeData: (nodeId: string, newData: Record<string, unknown>) => void;
+    
+    // 执行引擎相关
+    setNodeStatus: (nodeId: string, status: 'idle' | 'running' | 'success' | 'error') => void;
+    setNodeResult: (nodeId: string, result: unknown) => void;
+    resetExecution: () => void;
 }
 
 //创建Store
@@ -50,6 +58,8 @@ export const useFlowStore = create<FlowState & FlowAction>()(
             executionState: 'idle',
             sidebarOpen: false,
             selectedNodeId: null,
+            executionStatus: {},
+            executionResults: {},
 
             //设置节点
             setNodes: (nodes: Node[]) => set((state) => {
@@ -91,6 +101,19 @@ export const useFlowStore = create<FlowState & FlowAction>()(
                     // 这里做浅合并：保留原有的 data，只覆盖新传入的字段
                     node.data = { ...node.data, ...newData };
                 }
+            }),
+
+            // 执行引擎相关实现
+            setNodeStatus: (nodeId, status) => set((state) => {
+                state.executionStatus[nodeId] = status;
+            }),
+            setNodeResult: (nodeId, result) => set((state) => {
+                state.executionResults[nodeId] = result;
+            }),
+            resetExecution: () => set((state) => {
+                state.executionStatus = {};
+                state.executionResults = {};
+                state.executionState = 'idle';
             }),
         })),
         {

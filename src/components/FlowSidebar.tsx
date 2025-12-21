@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useFlowStore } from '@/store/useFlowStore';
 import {
     Sheet,
@@ -7,7 +7,8 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { nodeRegistry, type NodeParameter } from '@/registry/nodeRegistry';
+import { nodeRegistry } from '@/registry/nodeRegistry';
+import { type NodeParameter } from '@/types/workflow';
 import { useForm } from 'react-hook-form';
 import { ParameterRender } from './ParameterRender';
 

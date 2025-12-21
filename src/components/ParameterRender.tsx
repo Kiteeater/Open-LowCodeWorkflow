@@ -1,10 +1,10 @@
 import React from 'react';
 import { type Control, Controller } from 'react-hook-form';
-import { type NodeParameter } from '@/registry/nodeRegistry';
+import { type NodeParameter, type WorkflowNodeData } from '@/types/workflow';
 import { cn } from '@/lib/utils';
 interface ParameterRenderProps {
   parameter: NodeParameter;
-  control: Control<any>;
+  control: Control<WorkflowNodeData>;
 }
 
 export const ParameterRender: React.FC<ParameterRenderProps> = ({ parameter, control }) => {
