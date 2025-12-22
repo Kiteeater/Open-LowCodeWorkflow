@@ -6,7 +6,7 @@ import { useFlowStore } from './store/useFlowStore'
 import { ReactFlow, Background, Controls, MiniMap, type ReactFlowInstance, BackgroundVariant } from '@xyflow/react'
 import '@xyflow/react/dist/style.css';
 import { BasicNode } from './components/NodeType';
-import { runWorkflow } from './utils/flowEngine';
+// import { runWorkflow } from './utils/flowEngine';
 import { workerClient } from './utils/worker-client';
 import { Play, Loader2 } from 'lucide-react';
 
@@ -29,16 +29,13 @@ function App() {
 
   // ⚡️ 执行工作流
   const handleRun = async () => {
-    // 引入 Comlink 测试调用
-    console.log('--- Comlink RPC Test Start ---');
-    await workerClient.testConnection('Antigravity');
-    console.log('--- Comlink RPC Test End ---');
-
     resetExecution();
-    await runWorkflow(nodes, edges, {
-      setNodeStatus,
-      setNodeResult,
-      setExecutionState
+    
+    // 迁移至 Web Worker 执行，保持 UI 流畅
+    await workerClient.runWorkflow(nodes, edges, {
+      onNodeStatusChange: (nodeId, status) => setNodeStatus(nodeId, status),
+      onNodeResult: (nodeId, result) => setNodeResult(nodeId, result),
+      onExecutionStateChange: (state) => setExecutionState(state),
     });
   };
 

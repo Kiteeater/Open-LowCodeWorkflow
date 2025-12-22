@@ -89,19 +89,19 @@
 
 **Goal:** Offload execution to Worker to keep UI at 60FPS.
 
-- [ ] **4.1 Web Worker Setup (2h)**
+- [x] **4.1 Web Worker Setup (2h)**
 
-  - [ ] Create `workflow.worker.ts`.
-  - [ ] Test basic Ping/Pong message.
+  - [x] Create `workflow.worker.ts`.
+  - [x] Test basic Ping/Pong message.
 
-- [ ] **4.2 Comlink Integration (2h)**
+- [x] **4.2 Comlink Integration (2h)**
 
-  - [ ] Install `comlink`.
-  - [ ] Expose Worker functions as RPC Promise objects.
+  - [x] Install `comlink`.
+  - [x] Expose Worker functions as RPC Promise objects.
 
-- [ ] **4.3 Engine Migration (4h)**
-  - [ ] Move `runWorkflow` and Topo Sort logic into Worker.
-  - [ ] Main Thread: Send Graph JSON -> Await Result.
+- [x] **4.3 Engine Migration (4h)**
+  - [x] Move `runWorkflow` and Topo Sort logic into Worker.
+  - [x] Main Thread: Send Graph JSON -> Await Result.
 
 ---
 
@@ -109,19 +109,19 @@
 
 **Goal:** Support `{{ $node["A"].data }}` via static analysis.
 
-- [ ] **5.1 AST Setup (2h)**
+- [x] **5.1 AST Setup (2h)**
 
-  - [ ] Install `acorn`.
-  - [ ] Test parsing simple JS expressions in console.
+  - [x] Install `acorn`.
+  - [x] Test parsing simple JS expressions in console.
 
-- [ ] **5.2 Dependency Extraction (3h)**
+- [x] **5.2 Dependency Extraction (3h)**
 
-  - [ ] Implement `extractDependencies(code)` using Acorn.
-  - [ ] Walk the AST tree to find `MemberExpression` (e.g., `$node.Http`).
+  - [x] Implement `extractDependencies(code)` using Acorn.
+  - [x] Walk the AST tree to find `MemberExpression` (e.g., `$node.Http`).
 
-- [ ] **5.3 Data Injection Logic (3h)**
-  - [ ] In Worker: Before running a node, parse its code.
-  - [ ] Find dependencies -> Fetch data from `executionResults` -> Inject into context.
+- [x] **5.3 Data Injection Logic (3h)**
+  - [x] In Worker: Before running a node, parse its code.
+  - [x] Find dependencies -> Fetch data from `executionResults` -> Inject into context.
 
 ---
 

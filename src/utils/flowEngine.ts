@@ -17,9 +17,12 @@ import {
  *    - 如果下游节点入度减为 0，则入队。
  * 5. 如果没有连线，算法会按 nodes 数组的原始顺序处理入度为 0 的节点。
  * 
+ * 
  * @param nodes ReactFlow 节点数组
  * @param edges ReactFlow 连线数组
  * @returns 排序后的 nodeId 字符串数组
+ * 
+ * @deprecated Logic moved to Web Worker (workflow.worker.ts)
  */
 export function getExecutionSequence(nodes: Node[], edges: Edge[]): string[] {
   const inDegree: Record<string, number> = {};
@@ -37,7 +40,7 @@ export function getExecutionSequence(nodes: Node[], edges: Edge[]): string[] {
     // 只有当源节点和目标节点都存在于节点列表中时才统计 (过滤可能的失效连线)
     if (inDegree[target] !== undefined && adjacencyList[source] !== undefined) {
       inDegree[target]++;
-      adjacencyList[source].push(target);
+        adjacencyList[source].push(target);
     }
   });
 
@@ -79,6 +82,8 @@ export function getExecutionSequence(nodes: Node[], edges: Edge[]): string[] {
  * @param nodes 节点数组
  * @param edges 连线数组
  * @param actions 状态更新回调对象
+ * 
+ * @deprecated Logic moved to Web Worker (workflow.worker.ts)
  */
 export async function runWorkflow(  
   nodes: Node<WorkflowNodeData>[],

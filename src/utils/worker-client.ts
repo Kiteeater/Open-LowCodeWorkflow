@@ -1,5 +1,7 @@
 import * as Comlink from 'comlink';
-import type { WorkflowEngine } from '../workers/workflow.worker';
+import type { WorkflowEngine, WorkerCallbacks } from '../workers/workflow.worker';
+import type { Node, Edge } from '@xyflow/react';
+import type { WorkflowNodeData } from '../types/workflow';
 //看不懂的一段代码
 export class WorkflowWorkerClient {
   private worker: Worker;
@@ -16,10 +18,14 @@ export class WorkflowWorkerClient {
     console.log('Workflow Worker initialized with Comlink!');
   }
 
-  public async testConnection(name: string) {
-    const result = await this.remoteApi.testConnection(name);
-    console.log('Comlink RPC Result:', result);
-    return result;
+
+  public async runWorkflow(
+    nodes: Node<WorkflowNodeData>[],
+    edges: Edge[],
+    callbacks: WorkerCallbacks
+  ) {
+    // 关键：将回调对象包装为 Proxy，否则无法跨线程调用函数
+    await this.remoteApi.runWorkflow(nodes, edges, Comlink.proxy(callbacks));
   }
 }
 
