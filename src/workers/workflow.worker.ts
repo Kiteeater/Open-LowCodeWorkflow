@@ -5,9 +5,12 @@ import { extractDependencies } from '../utils/ast-parser';
 
 // 定义回调接口：主线程通过 Comlink.proxy 传递此对象
 export interface WorkerCallbacks {
-  onNodeStatusChange: (nodeId: string, status: 'idle' | 'running' | 'success' | 'error') => void;
+  onNodeStatusChange: (
+    nodeId: string,
+    status: "idle" | "running" | "success" | "error"
+  ) => void;
   onNodeResult: (nodeId: string, result: unknown) => void;
-  onExecutionStateChange: (state: 'idle' | 'running' | 'paused') => void;
+  onExecutionStateChange: (state: "idle" | "running" | "paused") => void;
 }
 
 export class WorkflowEngine {
@@ -113,7 +116,12 @@ export class WorkflowEngine {
 
           // 打印感知到的数据上下文 (调试用)
           if (Object.keys(contextNodeData).length > 0) {
-            console.log(`[WorkflowWorker] Node "${node.data.label || nodeId}" injected with context:`, contextNodeData);
+            console.log(
+              `[WorkflowWorker] Node "${
+                node.data.label || nodeId
+              }" injected with context:`,
+              contextNodeData
+            );
           }
 
           // --- 执行逻辑 (保留原 flowEngine 逻辑) ---
@@ -146,18 +154,39 @@ export class WorkflowEngine {
               // 注意：为了让用户能直接写 "$node["A"].data"，我们需要将代码包装一下
               // 或者约定用户代码需要 return 一个值
               const userCode = (node.data as CodeNodeData).code || '';
-              
-              // 简单的沙箱执行：注入 $node 变量
-              // 允许代码中直接使用 $node，并返回最后的结果
-              const sandbox = new Function('$node', `
-                try {
-                  ${userCode.includes('return') ? userCode : `return (${userCode})`}
-                } catch (e) {
-                  throw new Error('Script execution error: ' + e.message);
+
+              // 构造执行环境 (Task 6.1)
+              const context = {
+                $node: contextNodeData,
+                utils: {
+                  json: (val: unknown) => JSON.stringify(val, null, 2),
+                },
+                console: {
+                  log: (...args: unknown[]) => console.log(`[Node: ${node.data.label || nodeId}]`, ...args),
                 }
+              };
+
+              const scopeKeys: string[] = Object.keys(context);
+              const scopeValues: unknown[] = Object.values(context);
+              
+              // 安全加固 (Task 6.3)：影子屏蔽危险全局 API
+              const forbiddenGlobals = ['fetch', 'self', 'XMLHttpRequest', 'indexedDB', 'postMessage', 'importScripts'];
+              forbiddenGlobals.forEach(key => {
+                if (!scopeKeys.includes(key)) {
+                  scopeKeys.push(key);
+                  scopeValues.push(null);
+                }
+              });
+              
+              // 构造动态函数 (Task 6.2)：支持 async/await 和 return
+              // 将 userCode 包装在 async 立即执行函数中
+              const sandbox = new Function(...scopeKeys, `
+                return (async () => {
+                  ${userCode.includes('return') ? userCode : `return (${userCode})`}
+                })();
               `);
               
-              result = sandbox(contextNodeData);
+              result = await sandbox(...scopeValues);
               console.log(`[WorkflowWorker] Node "${node.data.label || nodeId}" execution result:`, result);
             } catch (evalError: unknown) {
               const message = evalError instanceof Error ? evalError.message : String(evalError);
