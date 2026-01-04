@@ -129,14 +129,14 @@
 
 **Goal:** Execute user code safely without using `with` (to support React Strict Mode).
 
-- [ ] **6.1 Scope Preparation (2h)**
+- [x] **6.1 Scope Preparation (2h)**
 
-  - [ ] Define the context object: `const context = { $node: ..., utils: ..., console: ... }`.
-  - [ ] Extract keys and values: `Object.keys(context)`, `Object.values(context)`.
+  - [x] Define the context object: `const context = { $node: ..., utils: ..., console: ... }`.
+  - [x] Extract keys and values: `Object.keys(context)`, `Object.values(context)`.
 
-- [ ] **6.2 Safe Execution Implementation (4h)**
+- [x] **6.2 Safe Execution Implementation (4h)**
 
-  - [ ] **⚠️ [NEW] Replace `with` logic**:
+  - [x] **⚠️ [NEW] Replace `with` logic**:
 
     ```javascript
     // Create function with explicit arguments
@@ -150,10 +150,10 @@
     }
     ```
 
-  - [ ] Verify: Ensure variables defined in `context` are accessible in user code.
+  - [x] Verify: Ensure variables defined in `context` are accessible in user code.
 
-- [ ] **6.3 Security Hardening (Optional)**
-  - [ ] Shadow dangerous globals in the Worker scope (e.g., `self.fetch = null` if needed).
+- [x] **6.3 Security Hardening (Optional)**
+  - [x] Shadow dangerous globals in the Worker scope (e.g., `self.fetch = null` if needed).
 
 ---
 
@@ -173,6 +173,175 @@
 - [ ] **7.3 Resume & Demo Assets (3h)**
   - [ ] Record GIF: Drag Node -> Config (Proxy On) -> Connect -> Run -> Result.
   - [ ] Update README with "Off-Main-Thread", "AST", "Strict Mode Sandbox".
+
+---
+
+### Day 8: AI Agent Node - Core Implementation
+
+**Goal:** Implement fully functional AI Agent node with LLM integration, secure storage, and multi-turn conversations.
+
+- [ ] **8.1 Type System Extension (30min)**
+  - [ ] Extend `ParameterType` with `'ai-model' | 'ai-template' | 'skill-source'`
+  - [ ] Define `AIAgentNodeData` interface:
+    - [ ] Basic config: model, provider, apiKey, temperature, maxTokens
+    - [ ] Prompt config: systemMessage, prompt
+    - [ ] Advanced toggles: enableStream, enableFunctionCalling, enableMultiTurn
+    - [ ] SKILL config: skillSources array
+    - [ ] Conversation config: conversationId, maxHistoryLength
+  - [ ] Define `LLMMessage`, `LLMResponse`, `FunctionCall`, `SkillSource` interfaces
+  - [ ] Update `WorkflowNodeData` union type
+
+- [ ] **8.2 Node Registry Configuration (30min)**
+  - [ ] Configure complete `ai-agent` parameters in `nodeRegistry.ts`:
+    - [ ] Node name, provider selector, model selector
+    - [ ] API Key input (with encryption hint)
+    - [ ] System Message (code type)
+    - [ ] User Prompt (code type, support `{{ $node["XXX"].data }}` syntax)
+    - [ ] Temperature & Max Tokens parameters
+    - [ ] Advanced feature toggles
+    - [ ] Max history length setting
+  - [ ] Configure multiple handles (main-input/output, context-input, tool-output)
+
+- [ ] **8.3 Encryption Service (1h)**
+  - [ ] Create `src/workers/services/crypto.service.ts`
+  - [ ] Implement `CryptoService` class with Web Crypto API:
+    - [ ] `encrypt(plaintext, password?)`: AES-GCM 256-bit, PBKDF2 key derivation
+    - [ ] `decrypt(ciphertext, password?)`: Decrypt and return plaintext
+    - [ ] `getDefaultKey()`: localStorage-based key persistence
+  - [ ] Error handling: return null on decryption failure
+
+- [ ] **8.4 LLM Service Implementation (2h)**
+  - [ ] Create `src/workers/services/llm.service.ts`
+  - [ ] Define `LLMChatParams` and `LLMStreamParams` interfaces
+  - [ ] Implement `chat(params)`: Route to OpenAI or Anthropic
+  - [ ] Implement `chatOpenAI(params)`:
+    - [ ] Build request body (model, messages, temperature, max_tokens)
+    - [ ] Fetch `https://api.openai.com/v1/chat/completions`
+    - [ ] Parse response and return `LLMResponse`
+  - [ ] Implement `chatAnthropic(params)`:
+    - [ ] Extract system message
+    - [ ] Fetch `https://api.anthropic.com/v1/messages`
+    - [ ] Parse Claude format response
+  - [ ] Error handling: unified error format with status code
+
+- [ ] **8.5 Worker Execution Engine Integration (1.5h)**
+  - [ ] Import services: `LLMService`, `CryptoService`, `ConversationService`
+  - [ ] Instantiate services in `WorkflowEngine` class
+  - [ ] Implement private method `executeAIAgent(...)`:
+    - [ ] Decrypt API Key
+    - [ ] Call `injectVariables` to inject data into Prompt
+    - [ ] Build messages array (system + history + user)
+    - [ ] Call `llmService.chat`
+    - [ ] Save to conversation history if multi-turn enabled
+    - [ ] Return `LLMResponse`
+  - [ ] Implement `injectVariables(template, contextNodeData)`:
+    - [ ] Regex replace `{{ $node["XXX"].data }}`
+    - [ ] Inject data as JSON string
+  - [ ] Add `ai-agent` node handling in `runWorkflow` method
+
+- [ ] **8.6 Conversation Storage Service (30min)**
+  - [ ] Create `src/workers/services/conversation.service.ts`
+  - [ ] Define `Conversation` interface (id, createdAt, updatedAt, messages)
+  - [ ] Implement `ConversationService` class (memory + localStorage):
+    - [ ] `createConversation()`: Generate UUID, init empty messages
+    - [ ] `getConversation(id)`: Retrieve from Map
+    - [ ] `addMessage(conversationId, message)`: Add and update timestamp
+    - [ ] `getRecentMessages(conversationId, maxCount)`: Get last N messages
+    - [ ] `deleteConversation(id)`: Remove conversation
+    - [ ] `loadFromStorage()` / `saveToStorage()`: Persistence
+
+---
+
+### Day 9: AI Agent Node - Advanced Features
+
+**Goal:** Add streaming output, function calling, SKILL plugin system, and upgrade to IndexedDB.
+
+- [ ] **9.1 Streaming Output (1.5h)**
+  - [ ] Implement `streamChat(params)` in `llm.service.ts`
+  - [ ] Implement `streamOpenAI(params)`:
+    - [ ] Add `stream: true` to request body
+    - [ ] Use `response.body?.getReader()` to read stream
+    - [ ] Parse SSE format (`data: {...}`)
+    - [ ] Accumulate content and call `onChunk(delta)` callback
+    - [ ] Return complete `LLMResponse`
+  - [ ] Implement `streamAnthropic(params)`: Parse Claude SSE format
+  - [ ] Error handling: fallback to non-streaming on failure
+
+- [ ] **9.2 Worker Callback Extension (30min)**
+  - [ ] Extend `WorkerCallbacks` interface:
+    - [ ] Add `onStreamChunk?(nodeId, chunk)` optional callback
+  - [ ] Update `executeAIAgent`:
+    - [ ] Pass `onChunk` callback in streaming mode
+    - [ ] Call `callbacks.onStreamChunk?.(nodeId, chunk)`
+
+- [ ] **9.3 IndexedDB Storage Upgrade (1h)**
+  - [ ] Install dependency: `npm install idb`
+  - [ ] Create `src/utils/indexeddb.ts`
+  - [ ] Define `EdgeFlowDB` schema:
+    - [ ] `conversations` store (id index + updatedAt index)
+    - [ ] `apiKeys` store (id index)
+  - [ ] Implement `IndexedDBService` class:
+    - [ ] `init()`: Initialize with `openDB`
+    - [ ] `saveConversation(conversation)`
+    - [ ] `getConversation(id)`
+    - [ ] `getAllConversations()`
+    - [ ] `deleteConversation(id)`
+  - [ ] Replace localStorage with IndexedDB in `ConversationService`
+
+- [ ] **9.4 Function Calling Implementation (1.5h)**
+  - [ ] Create `src/workers/services/function-calling.service.ts`
+  - [ ] Define `FunctionDefinition` and `FunctionExecutionResult` interfaces
+  - [ ] Implement `FunctionCallingService` class:
+    - [ ] `registerFunction(name, fn, definition)`: Register tool function
+    - [ ] `getFunctionDefinitions()`: Get all definitions for LLM
+    - [ ] `executeFunctionCall(name, arguments_)`: Execute and return result
+    - [ ] `handleLLMFunctionCall(functionCall)`: Process LLM tool call
+  - [ ] Integrate in `LLMService`:
+    - [ ] Add `functions?` optional parameter to `chat()`
+    - [ ] Include `tools` field in request body
+    - [ ] Detect `finish_reason: 'function_call'` or `tool_calls`
+    - [ ] Return `functionCall` field in response
+  - [ ] Update `WorkflowEngine`:
+    - [ ] Detect `functionCall` in response
+    - [ ] Call `FunctionCallingService` to execute
+    - [ ] Append result to messages and call LLM again
+
+- [ ] **9.5 SKILL Plugin System (1.5h)**
+  - [ ] Create `src/workers/services/skill-loader.service.ts`
+  - [ ] Define `Skill` interface (name, version, description, execute)
+  - [ ] Implement `SkillLoaderService` class:
+    - [ ] `loadFromGitHub(url)`: Fetch raw code and eval
+    - [ ] `loadFromNPM(packageName)`: Dynamic import via esm.sh CDN
+    - [ ] `evalSkill(code)`: Sandbox with `new Function`, validate interface
+    - [ ] `getSkill(name)`: Retrieve loaded skill
+    - [ ] `executeSkill(name, input)`: Execute skill
+  - [ ] Integrate in `WorkflowEngine`:
+    - [ ] Preload configured SKILLS on startup
+    - [ ] Register SKILLS as Function Calling tools
+    - [ ] Unified execution entry point
+
+- [ ] **9.6 Prompt Template Management (30min)**
+  - [ ] Create `src/utils/prompt-templates.ts`
+  - [ ] Define `PromptTemplate` interface
+  - [ ] Define `PROMPT_TEMPLATES` constant array:
+    - [ ] Text Summarization
+    - [ ] Code Review
+    - [ ] Translation
+    - [ ] JSON Transformation
+    - [ ] Blog Generation
+  - [ ] Implement `PromptTemplateService` class:
+    - [ ] `getAllTemplates()`
+    - [ ] `getTemplate(id)`
+    - [ ] `addTemplate(template)`
+    - [ ] `removeTemplate(id)`
+  - [ ] Add template selector in `nodeRegistry.ts`
+
+- [ ] **9.7 UI Component Updates (Optional)**
+  - [ ] Extend `ParameterRender` component:
+    - [ ] `ai-template` type: Dropdown for template selection
+    - [ ] `skill-source` type: SKILL source configuration form
+  - [ ] Add template auto-fill logic
+  - [ ] Add streaming output UI display
 
 ---
 
