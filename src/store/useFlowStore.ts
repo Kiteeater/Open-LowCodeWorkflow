@@ -14,6 +14,7 @@ import {
     addEdge,
 } from '@xyflow/react'
 import { type WorkflowNodeData } from '@/types/workflow';
+import type { LLMMessage } from '@/types/llm';
 
 
 //定义节点类型
@@ -25,6 +26,8 @@ interface FlowState {
     selectedNodeId: string | null; //选中的节点ID
     executionStatus: Record<string, 'idle' | 'running' | 'success' | 'error'>;
     executionResults: Record<string, unknown>;
+    nodeErrors: Record<string, string>; //节点错误信息
+    conversationHistory: Record<string, LLMMessage[]>; //对话历史存储
 }
 
 //定义节点操作
@@ -41,18 +44,27 @@ interface FlowAction {
     onConnect: OnConnect;
     setSelectedNodeId: (id: string | null) => void;
     updateNodeData: (nodeId: string, newData: Record<string, unknown>) => void;
-    
+
     // 执行引擎相关
     setNodeStatus: (nodeId: string, status: 'idle' | 'running' | 'success' | 'error') => void;
     setNodeResult: (nodeId: string, result: unknown) => void;
     resetExecution: () => void;
+
+    // 错误处理相关（8.7 错误显示系统）
+    setNodeError: (nodeId: string, error: string) => void;
+    clearNodeError: (nodeId: string) => void;
+
+    // 对话历史相关（新增功能）
+    appendConversationHistory: (nodeId: string, messages: LLMMessage[]) => void;
+    getConversationHistory: (nodeId: string) => LLMMessage[];
+    clearConversationHistory: (nodeId: string) => void;
 }
 
 //创建Store
 
 export const useFlowStore = create<FlowState & FlowAction>()(
     persist(
-        immer((set) => ({
+        immer((set, get) => ({
             nodes: [],
             edges: [],
             executionState: 'idle',
@@ -60,6 +72,8 @@ export const useFlowStore = create<FlowState & FlowAction>()(
             selectedNodeId: null,
             executionStatus: {},
             executionResults: {},
+            nodeErrors: {},
+            conversationHistory: {},
 
             //设置节点
             setNodes: (nodes: Node[]) => set((state) => {
@@ -114,6 +128,30 @@ export const useFlowStore = create<FlowState & FlowAction>()(
                 state.executionStatus = {};
                 state.executionResults = {};
                 state.executionState = 'idle';
+                // 注意：不重置 nodeErrors 和 conversationHistory，保持持久化
+            }),
+
+            // 错误处理相关方法
+            setNodeError: (nodeId, error) => set((state) => {
+                state.nodeErrors[nodeId] = error;
+            }),
+            clearNodeError: (nodeId) => set((state) => {
+                delete state.nodeErrors[nodeId];
+            }),
+
+            // 对话历史相关方法
+            appendConversationHistory: (nodeId, messages) => set((state) => {
+                if (!state.conversationHistory[nodeId]) {
+                    state.conversationHistory[nodeId] = [];
+                }
+                state.conversationHistory[nodeId].push(...messages);
+            }),
+            getConversationHistory: (nodeId) => {
+                const state = get();
+                return state.conversationHistory[nodeId] || [];
+            },
+            clearConversationHistory: (nodeId) => set((state) => {
+                delete state.conversationHistory[nodeId];
             }),
         })),
         {

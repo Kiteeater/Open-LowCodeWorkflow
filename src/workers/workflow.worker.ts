@@ -1,7 +1,16 @@
 import * as Comlink from 'comlink';
 import type { Node, Edge } from '@xyflow/react';
-import type { WorkflowNodeData, HttpRequestNodeData, CodeNodeData } from '../types/workflow';
+import type {
+  WorkflowNodeData,
+  HttpRequestNodeData,
+  CodeNodeData,
+  AIAgentNodeData,
+} from '../types/workflow';
 import { extractDependencies } from '../utils/ast-parser';
+import { LLMService } from './services/llm.service';
+import { CryptoService } from './services/crypto.service';
+import { injectVariables } from './utils/interpolation';
+import type { LLMMessage } from '../types/llm';
 
 // 定义回调接口：主线程通过 Comlink.proxy 传递此对象
 export interface WorkerCallbacks {
@@ -9,11 +18,16 @@ export interface WorkerCallbacks {
     nodeId: string,
     status: "idle" | "running" | "success" | "error"
   ) => void;
-  onNodeResult: (nodeId: string, result: unknown) => void;
-  onExecutionStateChange: (state: "idle" | "running" | "paused") => void;
+  onNodeResult?: (nodeId: string, result: unknown) => void;
+  onExecutionStateChange?: (state: "idle" | "running" | "paused") => void;
+  onNodeError?: (nodeId: string, errorMessage: string) => void;
+  getConversationHistory?: (nodeId: string) => LLMMessage[];
+  appendConversationHistory?: (nodeId: string, messages: LLMMessage[]) => void;
 }
 
 export class WorkflowEngine {
+  private llmService = new LLMService();
+  private cryptoService = new CryptoService();
 
   /**
    * 获取工作流节点的执行序列 (基于 Kahn's Algorithm 拓扑排序)
@@ -64,6 +78,147 @@ export class WorkflowEngine {
   }
 
   /**
+   * 执行 AI Agent 节点
+   */
+  private async executeAIAgent(
+    node: Node<WorkflowNodeData>,
+    contextNodeData: Record<string, { data: unknown }>,
+    callbacks: WorkerCallbacks,
+    _executionResults: Record<string, unknown>,
+    _labelToIdMap: Record<string, string>,
+  ): Promise<{ success: true; data: unknown } | { success: false; error: string }> {
+    // 类型守卫：确保 node.data 是 AIAgentNodeData
+    if (node.type !== 'ai-agent') {
+      return { success: false, error: 'Node type mismatch' };
+    }
+
+    const nodeData = node.data as AIAgentNodeData;
+
+    // 1. 验证必填字段
+    if (!nodeData.apiKey || nodeData.apiKey.trim() === '') {
+      return { success: false, error: 'API Key is required' };
+    }
+
+    if (!nodeData.model || nodeData.model.trim() === '') {
+      return { success: false, error: 'Model is required' };
+    }
+
+    try {
+      // 2. 解密 API Key
+      const decryptResult = await this.cryptoService.decrypt(nodeData.apiKey);
+      if (!decryptResult.success) {
+        return { success: false, error: 'Failed to decrypt API Key' };
+      }
+      const apiKey = decryptResult.decrypted;
+
+      // 3. 获取对话历史（如果启用）
+      const conversationHistory = nodeData.enableHistory
+        ? (callbacks.getConversationHistory?.(node.id) ?? [])
+        : [];
+
+      // 4. 对历史进行截断（根据 maxHistoryRounds）
+      const maxRounds = nodeData.maxHistoryRounds ?? 5;
+      const truncatedHistory = this.truncateHistory(conversationHistory, maxRounds, nodeData.includeSystemMessageInHistory ?? false);
+
+      // 5. 将上下文数据插值到 Prompt
+      const interpolatedPrompt = injectVariables(nodeData.prompt, contextNodeData);
+
+      // 6. 构建消息数组
+      const messages = this.buildMessages(nodeData, interpolatedPrompt, truncatedHistory);
+
+      // 7. 调用 LLM 服务
+      const llmResult = await this.llmService.chat({
+        provider: nodeData.provider,
+        model: nodeData.model,
+        messages,
+        apiKey,
+        temperature: nodeData.temperature ?? 0.7,
+        maxTokens: nodeData.maxTokens ?? 1000,
+      });
+
+      if (!llmResult.success) {
+        return { success: false, error: llmResult.error.message };
+      }
+
+      // 8. 保存对话历史（如果启用）
+      if (nodeData.enableHistory) {
+        const historyMessages: LLMMessage[] = [
+          { role: 'user', content: interpolatedPrompt },
+          { role: 'assistant', content: llmResult.data.content },
+        ];
+
+        callbacks.appendConversationHistory?.(node.id, historyMessages);
+      }
+
+      // 9. 返回结果
+      return {
+        success: true,
+        data: {
+          content: llmResult.data.content,
+          usage: llmResult.data.usage,
+          finishReason: llmResult.data.finishReason,
+        },
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`AI Agent execution failed for node ${node.data?.label || node.id}:`, error);
+      return { success: false, error: message };
+    }
+  }
+
+  /**
+   * 截断对话历史到最大轮数
+   */
+  private truncateHistory(
+    history: LLMMessage[],
+    maxRounds: number,
+    _includeSystem: boolean,
+  ): LLMMessage[] {
+    if (history.length === 0) {
+      return history;
+    }
+
+    // 每轮包含 user + assistant（可能还有 system）
+    // 简单估算：每轮 2 条消息（user + assistant）
+    const maxMessages = maxRounds * 2;
+
+    if (history.length <= maxMessages) {
+      return history;
+    }
+
+    // 保留最近的 N 轮
+    return history.slice(-maxMessages);
+  }
+
+  /**
+   * 构建消息数组
+   */
+  private buildMessages(
+    nodeData: AIAgentNodeData,
+    interpolatedPrompt: string,
+    history: LLMMessage[],
+  ): LLMMessage[] {
+    const messages: LLMMessage[] = [];
+
+    // 1. 添加历史消息
+    messages.push(...history);
+
+    // 2. 添加当前系统消息（如果有且不在历史中）
+    if (nodeData.systemMessage && nodeData.systemMessage.trim() !== '') {
+      // 检查历史中是否已包含系统消息
+      const hasSystemInHistory = history.some(m => m.role === 'system');
+      if (!hasSystemInHistory || nodeData.includeSystemMessageInHistory) {
+        messages.push({ role: 'system', content: nodeData.systemMessage });
+      }
+    }
+
+    // 3. 添加当前用户消息
+    messages.push({ role: 'user', content: interpolatedPrompt });
+
+    return messages;
+  }
+
+  /**
    * 执行工作流
    * 注意：actions 必须是 Comlink.proxy(callbacks) 包装过的远程对象
    */
@@ -77,7 +232,9 @@ export class WorkflowEngine {
       const sequence = this.getExecutionSequence(nodes, edges);
 
       // 2. 通知开始
-      await callbacks.onExecutionStateChange('running');
+      if (callbacks.onExecutionStateChange) {
+        await callbacks.onExecutionStateChange('running');
+      }
 
       // 3. 结果池与名称映射（node里只有id没有label  ）
       const executionResults: Record<string, unknown> = {};
@@ -192,6 +349,21 @@ export class WorkflowEngine {
               const message = evalError instanceof Error ? evalError.message : String(evalError);
               throw new Error(`Code Node execution failed: ${message}`);
             }
+          } else if (node.type === 'ai-agent') {
+            // --- AI Agent 节点执行逻辑 ---
+            const aiResult = await this.executeAIAgent(
+              node,
+              contextNodeData,
+              callbacks,
+              executionResults,
+              labelToIdMap,
+            );
+
+            if (!aiResult.success) {
+              throw new Error(aiResult.error);
+            }
+
+            result = aiResult.data;
           } else {
             // 模拟耗时
             await new Promise((resolve) => setTimeout(resolve, 800));
@@ -205,25 +377,38 @@ export class WorkflowEngine {
           executionResults[nodeId] = result;
 
           // 结果回传
-          await callbacks.onNodeResult(nodeId, result);
+          if (callbacks.onNodeResult) {
+            await callbacks.onNodeResult(nodeId, result);
+          }
           await callbacks.onNodeStatusChange(nodeId, 'success');
 
         } catch (error) {
           const nodeName = node?.data?.label || nodeId;
+          const errorMessage = error instanceof Error ? error.message : String(error);
           console.error(`Worker execution failed at node ${nodeName}:`, error);
           await callbacks.onNodeStatusChange(nodeId, 'error');
+          // 调用错误回调
+          if (callbacks.onNodeError) {
+            await callbacks.onNodeError(nodeId, errorMessage);
+          }
           // 遇到错误中断
-          await callbacks.onExecutionStateChange('idle');
+          if (callbacks.onExecutionStateChange) {
+            await callbacks.onExecutionStateChange('idle');
+          }
           return;
         }
       }
 
       // 4. 全部完成
-      await callbacks.onExecutionStateChange('idle');
-      
+      if (callbacks.onExecutionStateChange) {
+        await callbacks.onExecutionStateChange('idle');
+      }
+
     } catch (err) {
       console.error('Workflow execution error:', err);
-      await callbacks.onExecutionStateChange('idle');
+      if (callbacks.onExecutionStateChange) {
+        await callbacks.onExecutionStateChange('idle');
+      }
     }
   }
 }

@@ -1,15 +1,30 @@
 import { Position } from '@xyflow/react';
 import React from 'react';
+import type { LLMProvider } from './llm';
 
 /**
  * 💡 什么是 ParameterType？
- * 它是表单项的“基因”。后续渲染器会根据这个类型决定：
+ * 它是表单项的"基因"。后续渲染器会根据这个类型决定：
  * 'string' -> 显示输入框
  * 'boolean' -> 显示开关
  * 'select' -> 显示下拉菜单
  * 'code' -> 代码编辑器
+ * 'ai-provider' -> LLM 供应商选择器（OpenAI / Anthropic）
+ * 'ai-model' -> 模型下拉框（根据供应商动态调整）
+ * 'encrypted-string' -> 带锁图标的加密输入字段（API Key）
+ * 'number' -> 温度/Token 的数字输入框
+ * 'toggle' -> 高级功能的布尔开关
  */
-export type ParameterType = 'string' | 'boolean' | 'select' | 'code';
+export type ParameterType =
+  | 'string'
+  | 'boolean'
+  | 'select'
+  | 'code'
+  | 'ai-provider'
+  | 'ai-model'
+  | 'encrypted-string'
+  | 'number'
+  | 'toggle';
 
 /**
  * 定义句柄的标准格式
@@ -70,6 +85,34 @@ export interface CodeNodeData extends BaseNodeData {
 }
 
 /**
+ * AI Agent 节点数据
+ */
+export interface AIAgentNodeData extends BaseNodeData {
+  /** LLM 供应商 */
+  provider: LLMProvider;
+  /** 模型名称 */
+  model: string;
+  /** API 密钥（存储时加密） */
+  apiKey: string;
+  /** 系统消息（可选） */
+  systemMessage?: string;
+  /** 提示词（支持 `{{ $node["X"].data }}` 变量插值） */
+  prompt: string;
+  /** 温度（0-2），默认 0.7 */
+  temperature?: number;
+  /** 最大 Token 数，默认 1000 */
+  maxTokens?: number;
+  /** 是否启用函数调用 */
+  enableFunctionCalling?: boolean;
+  /** 是否启用对话历史存储 */
+  enableHistory?: boolean;
+  /** 对话历史最大轮数（1-20轮），默认 5 */
+  maxHistoryRounds?: number;
+  /** 历史中是否包含系统消息 */
+  includeSystemMessageInHistory?: boolean;
+}
+
+/**
  * 联合类型，方便后续扩展
  */
-export type WorkflowNodeData = HttpRequestNodeData | CodeNodeData;
+export type WorkflowNodeData = HttpRequestNodeData | CodeNodeData | AIAgentNodeData;
